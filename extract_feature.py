@@ -3,12 +3,11 @@ import numpy as np
 import os
 import glob
 
-# --- Cấu hình (ĐÃ THAY ĐỔI ĐỂ KHỚP VỚI BÁO CÁO) ---
 AUDIO_FOLDER_PATH = r"D:\\HCSDLDPT\\folder giong noi" # Đường dẫn tới folder chứa file wav
 OUTPUT_DB_PATH = r"D:\\HCSDLDPT\\feature_db.npz"
 
-N_MFCC = 64             # Số lượng hệ số MFCC, theo shape (256, 64) trong báo cáo
-FIXED_NUM_FRAMES = 256  # Số lượng frame cố định, theo shape (256, 64) trong báo cáo
+N_MFCC = 64             # Số lượng hệ số MFCC, theo shape (256, 64) 
+FIXED_NUM_FRAMES = 256  # Số lượng frame cố định, theo shape (256, 64) 
 SAMPLE_RATE = 16000     # Tần số lấy mẫu mong muốn
 N_FFT = 2048            # Độ dài cửa sổ FFT
 HOP_LENGTH = 512        # Bước nhảy giữa các frame
@@ -35,7 +34,6 @@ def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_l
         else:
             mfccs_padded = mfccs[:, :fixed_num_frames]
         
-        # THÊM BƯỚC CHUYỂN VỊ (TRANSPOSE) ĐỂ KHỚP VỚI BÁO CÁO
         # Chuyển shape từ (n_mfcc, frames) -> (frames, n_mfcc), tức là (64, 256) -> (256, 64)
         mfccs_transposed = mfccs_padded.T
         
