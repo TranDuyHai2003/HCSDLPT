@@ -2,7 +2,6 @@ import librosa
 import numpy as np
 import os
 
-# --- Cấu hình (phải giống hệt với extract_features.py) ---
 FEATURE_DB_PATH = r"D:\\HCSDLDPT\\feature_db.npz"
 
 N_MFCC = 64
@@ -13,7 +12,6 @@ HOP_LENGTH = 512
 WIN_LENGTH = N_FFT
 N_MELS = 128
 
-# Hàm trích xuất đặc trưng (phải là bản sao y hệt trong extract_features.py)
 def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_length, win_length, n_mels):
     try:
         y, current_sr = librosa.load(audio_path, sr=sr)
@@ -33,7 +31,6 @@ def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_l
         print(f"Lỗi xử lý file {os.path.basename(audio_path)}: {e}")
         return None
 
-# HÀM TÍNH COSINE SIMILARITY THỦ CÔNG (THAY THẾ SKLEARN)
 def calculate_cosine_similarity(vec1, vec2):
     """
     Tính toán độ tương đồng cosine giữa hai vector 1D.
