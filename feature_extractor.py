@@ -1,56 +1,65 @@
-# feature_extractor.py
-import sqlite3
-import librosa  # Chỉ dùng ở đây!
+import os
+import librosa
 import numpy as np
-import io
 
-DATABASE_PATH = "voice_project.db"
+CSV_FILE_PATH = "features.csv"
+OUTPUT_CSV_FILE_PATH = "features_with_vectors.csv" 
 
-def extract_and_save_features():
-    """
-    Tìm các file chưa có đặc trưng trong CSDL, dùng librosa để tính,
-    và lưu ngược lại vào CSDL.
-    """
-    conn = sqlite3.connect(DATABASE_PATH)
-    cursor = conn.cursor()
-    
-    # Lấy danh sách các file chưa được xử lý (feature_vector IS NULL)
-    cursor.execute("SELECT id, filepath FROM audio_files WHERE feature_vector IS NULL")
-    files_to_process = cursor.fetchall()
-    
-    if not files_to_process:
-        print("Tất cả các file đã được trích xuất đặc trưng.")
+def extract_and_save_features_minimal():
+    if not os.path.exists(CSV_FILE_PATH):
+        print(f"Lỗi: File '{CSV_FILE_PATH}' không tồn tại. Vui lòng chạy csv_manager.py trước.")
         return
 
-    print(f"Bắt đầu trích xuất đặc trưng cho {len(files_to_process)} file...")
-    
-    for file_id, audio_path in files_to_process:
-        try:
-            print(f"Đang xử lý file ID: {file_id}...")
-            
-            # --- ĐIỂM DUY NHẤT SỬ DỤNG LIBROSA ---
-            y, sr = librosa.load(audio_path, sr=None)
-            mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20) # Lấy 20 hệ số
-            # -----------------------------------------
-            
-            # Chuyển mảng numpy thành chuỗi bytes để lưu vào BLOB
-            byte_io = io.BytesIO()
-            np.save(byte_io, mfccs) # Dùng np.save để lưu vào bộ đệm bytes
-            feature_bytes = byte_io.getvalue()
-            
-            # Cập nhật bản ghi trong CSDL với vector đặc trưng
-            cursor.execute('''
-                UPDATE audio_files
-                SET feature_vector = ?
-                WHERE id = ?
-            ''', (feature_bytes, file_id))
-            
-        except Exception as e:
-            print(f"Lỗi khi xử lý file {audio_path}: {e}")
+    try:
+        with open(CSV_FILE_PATH, mode='r', encoding='utf-8') as infile:
+            lines_to_process = infile.readlines()
+    except IOError as e:
+        print(f"Lỗi khi đọc file: {e}")
+        return
 
-    conn.commit()
-    conn.close()
-    print("Hoàn tất quá trình trích xuất đặc trưng.")
+    header = lines_to_process[0]
+    data_lines = lines_to_process[1:]
+
+    print(f"Bắt đầu trích xuất đặc trưng cho {len(data_lines)} file...")
+
+    try:
+        with open(OUTPUT_CSV_FILE_PATH, mode='w', encoding='utf-8') as outfile:
+            outfile.write(header)
+
+            for line in data_lines:
+                parts = line.strip().split(',')
+                if len(parts) != 3:
+                    continue
+                
+                filename, filepath, feature_vector_str = parts
+                
+                if feature_vector_str:
+                    outfile.write(line)
+                    continue
+
+                try:
+                    print(f"Đang xử lý file: {filename}...")
+                    
+                    y, sr = librosa.load(filepath, sr=None)
+                    mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20)
+                    
+                    feature_vector_flat = mfccs.flatten()
+                    feature_vector_str_new = ";".join(map(str, feature_vector_flat))
+                    
+                    new_line = f"{filename},{filepath},{feature_vector_str_new}\n"
+                    outfile.write(new_line)
+
+                except Exception as e:
+                    print(f"Lỗi khi xử lý file {filepath}: {e}")
+                    outfile.write(line)
+    except IOError as e:
+        print(f"Lỗi khi ghi file tạm: {e}")
+        return
+    
+    os.remove(CSV_FILE_PATH)
+    os.rename(OUTPUT_CSV_FILE_PATH, CSV_FILE_PATH)
+    
+    print(f"Hoàn tất! Dữ liệu đặc trưng đã được lưu vào '{CSV_FILE_PATH}'.")
 
 if __name__ == "__main__":
-    extract_and_save_features()
+    extract_and_save_features_minimal()
