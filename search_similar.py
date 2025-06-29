@@ -2,6 +2,7 @@ import librosa
 import numpy as np
 import os
 
+# --- Cấu hình (phải giống hệt với extract_features.py) ---
 FEATURE_DB_PATH = r"D:\\HCSDLDPT\\feature_db.npz"
 
 N_MFCC = 64
@@ -12,6 +13,7 @@ HOP_LENGTH = 512
 WIN_LENGTH = N_FFT
 N_MELS = 128
 
+# Hàm trích xuất đặc trưng (phải là bản sao y hệt trong extract_features.py đã được sửa)
 def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_length, win_length, n_mels):
     try:
         y, current_sr = librosa.load(audio_path, sr=sr)
@@ -26,7 +28,10 @@ def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_l
             mfccs_padded = mfccs[:, :fixed_num_frames]
         
         mfccs_transposed = mfccs_padded.T
-        return mfccs_transposed
+        
+        features_flat = mfccs_transposed.flatten()
+        return features_flat
+        
     except Exception as e:
         print(f"Lỗi xử lý file {os.path.basename(audio_path)}: {e}")
         return None
@@ -39,7 +44,6 @@ def calculate_cosine_similarity(vec1, vec2):
     norm_vec1 = np.linalg.norm(vec1)
     norm_vec2 = np.linalg.norm(vec2)
     
-    # Tránh lỗi chia cho 0
     if norm_vec1 == 0 or norm_vec2 == 0:
         return 0.0
         
@@ -50,6 +54,7 @@ def find_similar_voices(query_audio_path, feature_db_path, top_n=3):
     Tìm kiếm các giọng nói tương đồng với file query trong CSDL đặc trưng.
     """
     try:
+        # call tu db
         db_data = np.load(feature_db_path, allow_pickle=True)
         feature_db = {filename: db_data[filename] for filename in db_data.files}
         if not feature_db:
@@ -60,23 +65,17 @@ def find_similar_voices(query_audio_path, feature_db_path, top_n=3):
         return []
 
     print(f"\nĐang trích xuất đặc trưng cho file query: {os.path.basename(query_audio_path)}")
-    query_features = extract_mfcc_features(query_audio_path, N_MFCC, FIXED_NUM_FRAMES, SAMPLE_RATE, N_FFT, HOP_LENGTH, WIN_LENGTH, N_MELS)
+    # Hàm này bây giờ trả về một vector 1D đã được làm phẳng
+    query_features_flat = extract_mfcc_features(query_audio_path, N_MFCC, FIXED_NUM_FRAMES, SAMPLE_RATE, N_FFT, HOP_LENGTH, WIN_LENGTH, N_MELS)
     
-    if query_features is None:
+    if query_features_flat is None:
         print("Không thể trích xuất đặc trưng cho file query.")
         return []
 
-    # Làm phẳng ma trận MFCC để tính toán
-    # Ma trận có shape (256, 64) -> làm phẳng thành vector (16384,)
-    query_features_flat = query_features.flatten()
-    
     similarities = []
     print("Đang so sánh với CSDL...")
-    for filename, db_mfccs in feature_db.items():
-        db_mfccs_flat = db_mfccs.flatten()
-        
-        # SỬ DỤNG HÀM TÍNH TOÁN THỦ CÔNG
-        sim = calculate_cosine_similarity(query_features_flat, db_mfccs_flat)
+    for filename, db_vector in feature_db.items():
+        sim = calculate_cosine_similarity(query_features_flat, db_vector)
         similarities.append((filename, sim))
         
     similarities.sort(key=lambda x: x[1], reverse=True)
