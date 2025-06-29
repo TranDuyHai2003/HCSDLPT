@@ -3,26 +3,25 @@ import numpy as np
 import os
 import glob
 
-AUDIO_FOLDER_PATH = r"D:\\HCSDLDPT\\folder giong noi" # Đường dẫn tới folder chứa file wav
+# --- Cấu hình ---
+AUDIO_FOLDER_PATH = r"D:\\HCSDLDPT\\folder giong noi"
 OUTPUT_DB_PATH = r"D:\\HCSDLDPT\\feature_db.npz"
 
-N_MFCC = 64             # Số lượng hệ số MFCC, theo shape (256, 64) 
-FIXED_NUM_FRAMES = 256  # Số lượng frame cố định, theo shape (256, 64) 
-SAMPLE_RATE = 16000     # Tần số lấy mẫu mong muốn
-N_FFT = 2048            # Độ dài cửa sổ FFT
-HOP_LENGTH = 512        # Bước nhảy giữa các frame
-WIN_LENGTH = N_FFT      # Độ dài cửa sổ phân tích
-N_MELS = 128            # Số lượng bộ lọc Mel
-
+N_MFCC = 64
+FIXED_NUM_FRAMES = 256
+SAMPLE_RATE = 16000
+N_FFT = 2048
+HOP_LENGTH = 512
+WIN_LENGTH = N_FFT
+N_MELS = 128
 
 def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_length, win_length, n_mels):
     """
-    Trích xuất đặc trưng MFCC và trả về ma trận có shape (fixed_num_frames, n_mfcc).
+    Trích xuất đặc trưng MFCC và trả về một VECTOR 1D đã được làm phẳng.
     """
     try:
         y, current_sr = librosa.load(audio_path, sr=sr)
         
-        # librosa.feature.mfcc trả về shape: (n_mfcc, num_frames)
         mfccs = librosa.feature.mfcc(y=y, sr=current_sr, n_mfcc=n_mfcc,
                                      n_fft=n_fft, hop_length=hop_length,
                                      win_length=win_length, n_mels=n_mels)
@@ -34,10 +33,12 @@ def extract_mfcc_features(audio_path, n_mfcc, fixed_num_frames, sr, n_fft, hop_l
         else:
             mfccs_padded = mfccs[:, :fixed_num_frames]
         
-        # Chuyển shape từ (n_mfcc, frames) -> (frames, n_mfcc), tức là (64, 256) -> (256, 64)
         mfccs_transposed = mfccs_padded.T
         
-        return mfccs_transposed
+        # Làm phẳng ma trận (256, 64) thành vector 1D (16384,) trước khi trả về.
+        features_flat = mfccs_transposed.flatten()
+        
+        return features_flat
         
     except Exception as e:
         print(f"Lỗi xử lý file {os.path.basename(audio_path)}: {e}")
@@ -59,6 +60,7 @@ def build_feature_database(audio_folder, output_path, n_mfcc, fixed_num_frames, 
         filename = os.path.basename(audio_file)
         print(f"Đang xử lý file {i+1}/{len(audio_files)}: {filename}")
         
+        # Hàm này bây giờ trả về một vector 1D
         features = extract_mfcc_features(audio_file, n_mfcc, fixed_num_frames, sr, n_fft, hop_length, win_length, n_mels)
         
         if features is not None:
